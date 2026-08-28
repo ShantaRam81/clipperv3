@@ -9,7 +9,7 @@ export async function fetchJson(url, options = {}) {
 }
 
 export function inlinePlaceholder() {
-  return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Crect width='160' height='90' fill='%2318191c'/%3E%3Cpath d='M68 30l30 15-30 15z' fill='%238b8d96'/%3E%3C/svg%3E";
+  return "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 160 90'%3E%3Crect width='160' height='90' fill='%23222420'/%3E%3Ccircle cx='80' cy='45' r='22' fill='%23343631'/%3E%3Cpath d='M73 33l20 12-20 12z' fill='%23fbff58'/%3E%3C/svg%3E";
 }
 
 export function formatTime(seconds) {
