@@ -7,6 +7,7 @@ import { fetchJson, inlinePlaceholder, formatTime, isGifUrl, directVideoUrl, inf
 import { setUiState, setMessage } from "./ui.js";
 import { syncRange } from "./timeline.js";
 import { resetPreviewVideo } from "./preview.js";
+import { showToast } from "./toast.js";
 
 function filterMediaOptions(options, includeGifsInput) {
   const includeGifs = includeGifsInput?.checked === true;
@@ -40,6 +41,7 @@ export async function probeSource({ includeEmbeddedInput, includeGifsInput }) {
   } catch (error) {
     setUiState(state.selectedSourceUrl ? "ready" : "idle");
     setMessage(error.message);
+    showToast(error.message || "Не удалось распознать источник", { type: "error" });
   }
 }
 

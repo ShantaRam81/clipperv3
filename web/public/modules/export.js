@@ -3,6 +3,7 @@ import { state } from "./state.js";
 import { fetchJson, suggestedFileName } from "./api.js";
 import { setMessage, setSaveBusy } from "./ui.js";
 import { rememberSelectedTags } from "./tags.js";
+import { showToast } from "./toast.js";
 
 async function chooseSaveFileHandle(fileName) {
   if (!("showSaveFilePicker" in window)) return undefined;
@@ -52,6 +53,7 @@ async function saveFileToDevice(url, fileName, fileHandle) {
         await writable.close();
       }
       setMessage("Фрагмент сохранен на устройство.");
+      showToast("Фрагмент успешно сохранён", { type: "success" });
       return;
     } catch {
       setMessage("Браузер запретил запись в выбранную папку, запускаю обычное скачивание...");
@@ -60,6 +62,7 @@ async function saveFileToDevice(url, fileName, fileHandle) {
 
   triggerDownload(url, fileName);
   setMessage("Фрагмент скачивается на это устройство.");
+  showToast("Скачивание началось", { type: "success" });
 }
 
 export async function saveClip(event) {
@@ -91,6 +94,7 @@ export async function saveClip(event) {
     await saveFileToDevice(clip.downloadUrl || clip.href, fileName, fileHandle);
   } catch (error) {
     setMessage(error.message);
+    showToast(error.message || "Не удалось сохранить фрагмент", { type: "error" });
   } finally {
     state.isSaving = false;
     setSaveBusy(false);
