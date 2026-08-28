@@ -1,0 +1,5 @@
+node_modules/
+.processor-token.local
+.env
+.env.local
+.vercel/

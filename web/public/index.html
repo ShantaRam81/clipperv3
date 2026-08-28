@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Clipper v3</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/styles.css?v=1">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="composer" aria-label="Создание фрагмента">
+        <header class="topbar">
+          <div class="brand-mark" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div class="title-block">
+            <h1>Clipper v3</h1>
+          </div>
+          <div id="status" class="status">Проверка</div>
+        </header>
+
+        <section id="introState" class="command-panel" aria-label="Источник">
+          <div class="intro-copy" aria-label="Поддерживаемые источники">
+            <p>You can clip and export any<br>fragment from videos</p>
+            <div class="source-badges">
+              <span><i aria-hidden="true">▶</i>YouTube</span>
+              <span><i aria-hidden="true">Be</i>Behance</span>
+              <span><i aria-hidden="true">P</i>Pinterest</span>
+              <span><i aria-hidden="true">◎</i>Instagram</span>
+            </div>
+          </div>
+          <div class="paste-row">
+            <input id="url" type="url" placeholder="Paste from clipboard" autocomplete="off" required>
+            <button type="button" id="pasteFromClipboardBtn" class="paste-cta">Paste from clipboard</button>
+          </div>
+          <div class="source-toggles" aria-label="Настройки поиска">
+            <label class="toggle-field embedded-toggle" for="includeEmbedded">
+              <input id="includeEmbedded" type="checkbox" checked>
+              <i aria-hidden="true"></i>
+              <span>
+                <strong>Embedded video</strong>
+              </span>
+            </label>
+            <label class="toggle-field gif-toggle" for="includeGifs">
+              <input id="includeGifs" type="checkbox">
+              <i aria-hidden="true"></i>
+              <span>
+                <strong>GIF files</strong>
+              </span>
+            </label>
+          </div>
+          <div id="commandMessage" class="command-message" aria-live="polite"></div>
+        </section>
+
+        <section id="loadingState" class="loading-state" hidden aria-live="polite" aria-busy="true">
+          <div class="loading-orb" aria-hidden="true">
+            <span></span>
+            <i></i>
+          </div>
+          <div class="loading-copy">
+            <strong id="loadingTitle">Загрузка</strong>
+            <p id="loadingDetail">Источник готовится.</p>
+          </div>
+          <div class="loading-steps" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+        </section>
+
+        <form id="clipForm" class="clip-card">
+          <div class="source-panel panel">
+            <h2>Sources</h2>
+            <div id="sourcePreview" class="source-preview" hidden>
+              <img id="thumbnail" alt="">
+              <div>
+                <strong id="sourceTitle">Источник</strong>
+                <small id="sourceMeta">00:30</small>
+              </div>
+            </div>
+
+            <div id="videoOptions" class="video-options" hidden></div>
+          </div>
+
+          <section class="timeline-block panel" aria-label="Выбор фрагмента">
+            <div class="timeline-head">
+              <strong id="rangeLabel">00:00.0 - 00:05.0</strong>
+            </div>
+
+            <div class="preview-stage">
+              <img id="heroImage" alt="">
+              <video id="previewVideo" class="preview-video" playsinline muted hidden></video>
+            </div>
+
+            <div class="segment-preview">
+              <div id="timeBubble" class="time-bubble">00:00.0</div>
+              <button type="button" class="play-preview" aria-label="Предпросмотр фрагмента"></button>
+              <div id="filmstrip" class="filmstrip">
+                <div id="filmFrames" class="film-frames" aria-hidden="true"></div>
+                <div id="previewSelectedRange" class="preview-selected-range">
+                  <span class="range-handle left" data-edge="start"></span>
+                  <span class="range-handle right" data-edge="end"></span>
+                </div>
+                <div id="rangeTimeLabels" class="range-time-labels" aria-hidden="true">
+                  <span id="rangeStartLabel" class="range-time-label start">00:00</span>
+                  <span id="rangeEndLabel" class="range-time-label end">00:05</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="range-wrap" hidden>
+              <div id="selectedRange" class="selected-range"></div>
+              <input id="startRange" type="range" min="0" max="30" value="0" step="0.1">
+              <input id="endRange" type="range" min="0" max="30" value="5" step="0.1">
+            </div>
+
+          </section>
+
+          <div class="export-panel panel">
+            <h2>Export Settings</h2>
+
+            <div class="export-section duration-section">
+              <span class="export-label">Duration</span>
+              <div class="duration-pills">
+                <label class="duration-pill">
+                  <span class="clock-icon" aria-hidden="true"></span>
+                  <input id="start" type="text" value="00:00.0" inputmode="decimal" aria-label="Start time">
+                </label>
+                <i aria-hidden="true"></i>
+                <label class="duration-pill">
+                  <span class="clock-icon" aria-hidden="true"></span>
+                  <input id="end" type="text" value="00:05.0" inputmode="decimal" aria-label="End time">
+                </label>
+              </div>
+              <output id="duration" class="duration-total">5.0 сек</output>
+            </div>
+
+            <div class="export-section quality-section">
+              <span class="export-label">Quality</span>
+              <div class="quality-options" aria-label="Quality">
+                <button type="button" class="quality-option" data-quality="480">480</button>
+                <button type="button" class="quality-option active" data-quality="720">720</button>
+                <button type="button" class="quality-option" data-quality="1080">1080</button>
+                <button type="button" class="quality-option" data-quality="source">src</button>
+              </div>
+            </div>
+
+            <div class="export-section hashtag-section">
+              <span class="export-label">Hashtags</span>
+              <div class="hashtag-options" aria-label="Hashtags">
+                <button type="button" class="hashtag-option add-tag-option" id="addTagOption"><span aria-hidden="true">＋</span>Add</button>
+              </div>
+            </div>
+
+            <div class="export-section additionally-section">
+              <span class="export-label">Additionally</span>
+              <label class="sound-toggle">
+                <span aria-hidden="true">♬</span>
+                <strong>Sound</strong>
+                <input id="soundEnabled" type="checkbox" checked>
+                <i aria-hidden="true"></i>
+              </label>
+            </div>
+
+            <label class="field full">
+              <span>Name</span>
+              <input id="title" type="text" placeholder="Например: kinetic typography / logo reveal">
+            </label>
+
+            <label class="field full">
+              <span>Tags</span>
+              <input id="tagInput" type="text" list="tagSuggestions" placeholder="car, ui, motion">
+              <datalist id="tagSuggestions"></datalist>
+            </label>
+            <div id="tagChips" class="tag-chips" aria-label="Выбранные теги"></div>
+
+            <label class="field">
+              <span>Quality</span>
+              <select id="quality">
+                <option value="720">720p, оптимально</option>
+                <option value="480">480p, быстрее</option>
+                <option value="1080">1080p</option>
+                <option value="source">Исходное</option>
+              </select>
+            </label>
+            <button type="submit" id="saveBtn"><span aria-hidden="true">↓</span>Export</button>
+          </div>
+        </form>
+      </section>
+
+      <aside class="library" aria-label="Экспорт">
+        <header>
+          <div>
+            <h2>Сохранение</h2>
+          </div>
+        </header>
+        <div id="message" class="message"></div>
+        <div id="clips" class="clips">
+          <div class="message">История не хранится. Каждый фрагмент сохраняется сразу на ваше устройство.</div>
+        </div>
+      </aside>
+    </main>
+
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.20/dist/hls.min.js"></script>
+    <script src="/app.js?v=1" type="module"></script>
+  </body>
+</html>
