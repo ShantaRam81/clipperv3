@@ -76,16 +76,13 @@ export function renderVideoOptions(options, includeGifsInput) {
       }
       item.classList.add("active");
       item.querySelector("input").checked = true;
-      setUiState("loading", "Переключение", "Обновляю таймлайн.");
-      applySource(option)
-        .then(() => {
-          setUiState("ready");
-          setMessage(`Выбрано: ${option.title || option.provider}`);
-        })
-        .catch((error) => {
-          setUiState("ready");
-          setMessage(error?.message || "Не удалось переключить источник.");
-        });
+      // The option's thumbnail is already known, so applySource can swap the
+      // preview in immediately — no need to drop into the full loading screen
+      // just to switch between sources we already discovered.
+      setMessage(`Выбрано: ${option.title || option.provider}`);
+      applySource(option).catch((error) => {
+        setMessage(error?.message || "Не удалось переключить источник.");
+      });
     });
     videoOptionsEl.append(item);
   }
@@ -133,11 +130,12 @@ export async function applySource(data) {
   heroImageEl.src = imagePreview;
   renderFilmFrames(imagePreview);
   state.currentFilmstripUrl = state.selectedSourceUrl;
-  if (state.selectedMediaType === "gif") {
-    resetPreviewVideo();
-  } else {
-    await buildInitialFilmstrip(state.selectedSourceUrl, state.sourceDuration, state.selectedPreviewUrl);
-    resetPreviewVideo();
+  resetPreviewVideo();
+  if (state.selectedMediaType !== "gif") {
+    // Deliberately not awaited: the thumbnail above already gives an instant
+    // preview, so the sharper per-frame filmstrip can fill in in the
+    // background instead of blocking the switch on it.
+    buildInitialFilmstrip(state.selectedSourceUrl, state.sourceDuration, state.selectedPreviewUrl).catch(() => {});
   }
   previewEl.hidden = false;
   syncRange("range");
