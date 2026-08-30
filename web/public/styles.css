@@ -2388,9 +2388,9 @@ input[type="range"]::-moz-range-thumb {
 }
 
 .app-shell[data-ui-state="ready"] .paste-row {
-  border: 0 !important;
+  border: 1px solid rgba(236, 238, 241, 0.13) !important;
   outline: 0 !important;
-  background: #2f2f2d !important;
+  background: rgba(255, 255, 255, 0.035) !important;
   box-shadow: none !important;
 }
 
@@ -2412,8 +2412,8 @@ input[type="range"]::-moz-range-thumb {
   place-items: center !important;
   width: 100% !important;
   height: 54px !important;
-  background: #393936 !important;
-  color: rgba(236, 238, 241, 0.72) !important;
+  background: transparent !important;
+  color: rgba(236, 238, 241, 0.48) !important;
   pointer-events: auto !important;
 }
 

@@ -37,15 +37,19 @@ function triggerDownload(url, fileName) {
   link.remove();
 }
 
+// Fetches the whole clip into memory first, so the browser's download UI
+// only ever sees a complete, ready file instead of a live network stream
+// that visibly starts at 0 bytes and fills in.
 async function saveFileToDevice(url, fileName, fileHandle) {
   if (!url) throw new Error("Сервер не вернул ссылку на готовый фрагмент.");
 
+  setMessage("Загружаю готовый фрагмент с сервера...");
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Не удалось скачать готовый фрагмент.");
+  const blob = await response.blob();
+
   if (fileHandle) {
     try {
-      setMessage("Скачиваю фрагмент...");
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Не удалось скачать готовый фрагмент.");
-      const blob = await response.blob();
       const writable = await fileHandle.createWritable();
       try {
         await writable.write(blob);
@@ -60,9 +64,11 @@ async function saveFileToDevice(url, fileName, fileHandle) {
     }
   }
 
-  triggerDownload(url, fileName);
-  setMessage("Фрагмент скачивается на это устройство.");
-  showToast("Скачивание началось", { type: "success" });
+  const blobUrl = URL.createObjectURL(blob);
+  triggerDownload(blobUrl, fileName);
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 30000);
+  setMessage("Фрагмент сохранён на это устройство.");
+  showToast("Фрагмент готов и сохранён", { type: "success" });
 }
 
 export async function saveClip(event) {

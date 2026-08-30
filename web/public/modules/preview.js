@@ -124,14 +124,19 @@ export async function playSelectedPreview() {
   if (!previewUrl) return;
 
   const start = Number(startRange.value);
-  await loadPreviewMedia(previewUrl);
-  previewVideoEl.hidden = false;
-  previewVideoEl.currentTime = start;
-
+  setMessage("Готовлю предпросмотр...");
   try {
+    await loadPreviewMedia(previewUrl);
+    previewVideoEl.currentTime = start;
+    // Wait for a real, paintable frame before revealing the video element —
+    // otherwise it briefly shows solid black while the stream buffers/seeks,
+    // which especially on slower mobile connections reads as "preview is broken".
+    await waitForVideoEvent(previewVideoEl, "seeked", 8000).catch(() => {});
+    previewVideoEl.hidden = false;
     await previewVideoEl.play();
     setMessage(`Предпросмотр: ${startInput.value} - ${endInput.value}`);
   } catch {
+    previewVideoEl.hidden = true;
     setMessage("Не удалось запустить предпросмотр. Попробуйте сохранить фрагмент или обновить временную ссылку.");
   }
 }
