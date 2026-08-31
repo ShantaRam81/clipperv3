@@ -1,5 +1,7 @@
 import { spawn } from "node:child_process";
+import { existsSync } from "node:fs";
 import { statusError } from "./http.js";
+import { youtubeCookiesPath } from "./config.js";
 
 const YOUTUBE_BLOCK_PATTERNS = [
   /429/,
@@ -75,6 +77,7 @@ export function hasCommand(command) {
 
 export async function getYtdlpInfo(url, format = "") {
   const args = ["--dump-json", "--no-playlist", "--js-runtimes", "deno", "--remote-components", "ejs:github"];
+  if (existsSync(youtubeCookiesPath)) args.push("--cookies", youtubeCookiesPath);
   if (format) args.push("-f", format);
   args.push(url);
   const result = await runCommand("yt-dlp", args, { timeout: 60000 });

@@ -8,6 +8,7 @@ export const clipsDir = join(storageDir, "clips");
 export const tempDir = join(storageDir, "tmp");
 export const clipTtlMs = Number(process.env.CLIP_TTL_MINUTES || 60) * 60 * 1000;
 export const maxClipSeconds = Number(process.env.MAX_CLIP_SECONDS || 60);
+export const youtubeCookiesPath = process.env.YOUTUBE_COOKIES_PATH || join(storageDir, "youtube-cookies.txt");
 
 export const mimeTypes = {
   ".mp4": "video/mp4",
