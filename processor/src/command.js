@@ -18,6 +18,28 @@ function sleep(ms) {
   return new Promise((resolveSleep) => setTimeout(resolveSleep, ms));
 }
 
+// ffmpeg/yt-dlp stderr always leads with a long version/config/stream banner.
+// Strip that noise and keep only lines that look like the actual failure, so
+// a raw multi-KB build banner never ends up rendered as the user-facing
+// error message.
+const NOISE_LINE_PATTERNS = [
+  /^ffmpeg version/i,
+  /^\s*(configuration|built with|lib[a-z]+ +\d)/i,
+  /^(Input|Output) #/,
+  /^\s*(Stream|Metadata|Duration|Chapter)/i,
+  /^Stream mapping:/,
+  /^Press \[q\]/,
+  /^\[[a-z0-9]+ @ 0x[0-9a-f]+\]/i,
+  /^frame=/
+];
+
+function summarizeStderr(stderr) {
+  const lines = String(stderr || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const meaningful = lines.filter((line) => !NOISE_LINE_PATTERNS.some((pattern) => pattern.test(line)));
+  const tail = (meaningful.length ? meaningful : lines).slice(-4).join(" | ");
+  return tail.slice(0, 400);
+}
+
 function runOnce(command, args, options = {}) {
   return new Promise((resolveRun, rejectRun) => {
     const child = spawn(command, args, { shell: false });
@@ -36,8 +58,9 @@ function runOnce(command, args, options = {}) {
     });
     child.on("close", (code) => {
       clearTimeout(timer);
-      if (code === 0) resolveRun({ stdout, stderr });
-      else rejectRun(statusError(stderr || `${command} завершился с кодом ${code}`, 500));
+      if (code === 0) return resolveRun({ stdout, stderr });
+      console.error(`[${command}] exited ${code}\nargs: ${args.join(" ")}\nstderr:\n${stderr}`);
+      rejectRun(statusError(summarizeStderr(stderr) || `${command} завершился с кодом ${code}`, 500));
     });
   });
 }
@@ -75,9 +98,20 @@ export function hasCommand(command) {
   });
 }
 
+// Cookies were tried to reduce YouTube's anti-bot rate limiting, but in
+// practice they make things worse: with cookies, yt-dlp's info resolves
+// through the "WEB_EMBEDDED_PLAYER" client, and nearly every format under
+// that client 403s a direct fetch (ffmpeg or browser) without a PO token we
+// don't have — confirmed across multiple codecs/itags, reproducible outside
+// our own code with plain curl. Anonymous extraction has been reliable all
+// session, so cookies stay off for now. The file is left in place on the
+// VPS (youtubeCookiesPath) so this is a one-line re-enable if a future
+// yt-dlp release resolves the PO-token gating for authenticated clients.
+const USE_YOUTUBE_COOKIES = false;
+
 export async function getYtdlpInfo(url, format = "") {
   const args = ["--dump-json", "--no-playlist", "--js-runtimes", "deno", "--remote-components", "ejs:github"];
-  if (existsSync(youtubeCookiesPath)) args.push("--cookies", youtubeCookiesPath);
+  if (USE_YOUTUBE_COOKIES && existsSync(youtubeCookiesPath)) args.push("--cookies", youtubeCookiesPath);
   if (format) args.push("-f", format);
   args.push(url);
   const result = await runCommand("yt-dlp", args, { timeout: 60000 });

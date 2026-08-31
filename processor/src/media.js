@@ -46,11 +46,13 @@ export function getPreviewSource(info) {
     ...(Array.isArray(info.formats) ? info.formats : [])
   ];
 
-  const directPlayable = requested.find((format) => {
+  const directCandidates = requested.filter((format) => {
     if (!format?.url || !/^https?:\/\//i.test(format.url)) return false;
     if (format.vcodec === "none") return false;
     return !isStreamProtocol(format.protocol);
   });
+  // Prefer non-avc1 here too — same PO-token gating as resolveMediaFiles.
+  const directPlayable = directCandidates.find((format) => !/^avc1/i.test(format.vcodec || "")) || directCandidates[0];
   if (directPlayable?.url) return { url: directPlayable.url, kind: "direct" };
 
   const streamPlayable = requested.find((format) => {
@@ -61,6 +63,11 @@ export function getPreviewSource(info) {
   if (streamPlayable?.url) return { url: streamPlayable.url, kind: "hls" };
 
   return { url: "", kind: "" };
+}
+
+function headersFor(format) {
+  const headers = format?.http_headers;
+  return headers && typeof headers === "object" ? headers : null;
 }
 
 export async function resolveMediaFiles(sourceUrl, quality) {
@@ -81,7 +88,12 @@ export async function resolveMediaFiles(sourceUrl, quality) {
   const hasVideo = (format) => Boolean(format.vcodec && format.vcodec !== "none");
   const hasAudio = (format) => Boolean(format.acodec && format.acodec !== "none");
   const isPlainHttpMedia = (format) => !isStreamProtocol(String(format.protocol || ""));
-  const qualityScore = (format) => Number(format.height || 0) * 100000 + Number(format.tbr || format.vbr || format.abr || 0);
+  // YouTube's legacy H.264 ("avc1") muxed itags require a PO token we don't
+  // have and 403 a direct fetch once yt-dlp is authenticated with cookies;
+  // its AV1/VP9 formats don't have that requirement. Strongly prefer those,
+  // keeping avc1 only as a last-resort fallback when nothing else qualifies.
+  const potGatedPenalty = (format) => /^avc1/i.test(format.vcodec || "") ? 0 : 1e9;
+  const qualityScore = (format) => potGatedPenalty(format) + Number(format.height || 0) * 100000 + Number(format.tbr || format.vbr || format.abr || 0);
   const byQuality = (a, b) => qualityScore(b) - qualityScore(a);
 
   const combined = formats
@@ -95,9 +107,9 @@ export async function resolveMediaFiles(sourceUrl, quality) {
     .sort((a, b) => Number(b.abr || b.tbr || 0) - Number(a.abr || a.tbr || 0))[0];
 
   if (video && audio && (!combined || qualityScore(video) > qualityScore(combined))) {
-    return { videoPath: video.url, audioPath: audio.url, streamed: false };
+    return { videoPath: video.url, audioPath: audio.url, videoHeaders: headersFor(video), audioHeaders: headersFor(audio), streamed: false };
   }
-  if (combined) return { videoPath: combined.url, audioPath: "", streamed: false };
+  if (combined) return { videoPath: combined.url, audioPath: "", videoHeaders: headersFor(combined), streamed: false };
 
   const streamedCombined = formats
     .filter((format) => hasVideo(format) && hasAudio(format) && withinStreamQuality(format, maxHeight))
@@ -110,35 +122,46 @@ export async function resolveMediaFiles(sourceUrl, quality) {
     .sort((a, b) => Number(b.abr || b.tbr || 0) - Number(a.abr || a.tbr || 0))[0];
 
   if (!video && streamedVideo && streamedAudio && (!streamedCombined || qualityScore(streamedVideo) > qualityScore(streamedCombined))) {
-    return { videoPath: streamedVideo.url, audioPath: streamedAudio.url, streamed: true };
+    return { videoPath: streamedVideo.url, audioPath: streamedAudio.url, videoHeaders: headersFor(streamedVideo), audioHeaders: headersFor(streamedAudio), streamed: true };
   }
-  if (!video && streamedCombined) return { videoPath: streamedCombined.url, audioPath: "", streamed: true };
-  if (!video && streamedVideo) return { videoPath: streamedVideo.url, audioPath: streamedAudio?.url || "", streamed: true };
+  if (!video && streamedCombined) return { videoPath: streamedCombined.url, audioPath: "", videoHeaders: headersFor(streamedCombined), streamed: true };
+  if (!video && streamedVideo) return { videoPath: streamedVideo.url, audioPath: streamedAudio?.url || "", videoHeaders: headersFor(streamedVideo), audioHeaders: headersFor(streamedAudio), streamed: true };
 
   if (!video) {
     const infoProtocol = String(info.protocol || "");
     const cleanInfoUrl = cleanMediaUrl(info.url);
     if (cleanInfoUrl && !isStreamProtocol(infoProtocol)) {
-      return { videoPath: cleanInfoUrl, audioPath: "", streamed: false };
+      return { videoPath: cleanInfoUrl, audioPath: "", videoHeaders: headersFor(info), streamed: false };
     }
     throw statusError("В источнике не найден видеопоток.", 500);
   }
 
-  return { videoPath: video.url, audioPath: audio?.url || "", streamed: false };
+  return { videoPath: video.url, audioPath: audio?.url || "", videoHeaders: headersFor(video), audioHeaders: headersFor(audio), streamed: false };
 }
 
 function formatSeconds(seconds) {
   return seconds.toFixed(3);
 }
 
+// YouTube's (and some other CDNs') signed media URLs 403 a bare ffmpeg
+// request unless the User-Agent (and sometimes other headers) match what
+// yt-dlp negotiated the URL with.
+function ffmpegHeaderArgs(headers) {
+  if (!headers) return [];
+  const lines = Object.entries(headers).map(([key, value]) => `${key}: ${value}`).join("\r\n");
+  return lines ? ["-headers", `${lines}\r\n`] : [];
+}
+
 export async function cutMedia(mediaFiles, start, duration, outputPath, quality = "720", includeAudio = true) {
   const args = ["-y"];
 
   if (!mediaFiles.streamed) args.push("-ss", formatSeconds(start), "-t", formatSeconds(duration));
+  args.push(...ffmpegHeaderArgs(mediaFiles.videoHeaders));
   args.push("-i", mediaFiles.videoPath);
 
   if (includeAudio && mediaFiles.audioPath && mediaFiles.audioPath !== mediaFiles.videoPath) {
     if (!mediaFiles.streamed) args.push("-ss", formatSeconds(start), "-t", formatSeconds(duration));
+    args.push(...ffmpegHeaderArgs(mediaFiles.audioHeaders));
     args.push("-i", mediaFiles.audioPath);
     args.push("-map", "0:v:0", "-map", "1:a:0");
   } else if (includeAudio) {
@@ -166,6 +189,7 @@ export async function cutMedia(mediaFiles, start, duration, outputPath, quality 
 export async function captureFrame(videoPath, time, outputPath, mediaFiles = {}) {
   const args = ["-y"];
   if (!mediaFiles.streamed) args.push("-ss", formatSeconds(time));
+  args.push(...ffmpegHeaderArgs(mediaFiles.videoHeaders));
   args.push("-i", videoPath);
   if (mediaFiles.streamed) args.push("-ss", formatSeconds(time));
   args.push(
