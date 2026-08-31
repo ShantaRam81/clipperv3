@@ -4,6 +4,7 @@ import { fetchJson, suggestedFileName } from "./api.js";
 import { setMessage, setSaveBusy } from "./ui.js";
 import { rememberSelectedTags } from "./tags.js";
 import { showToast } from "./toast.js";
+import { startExportProgress, finishExportProgress, stopExportProgress } from "./progress.js";
 
 async function chooseSaveFileHandle(fileName) {
   if (!("showSaveFilePicker" in window)) return undefined;
@@ -44,6 +45,7 @@ async function saveFileToDevice(url, fileName, fileHandle) {
   if (!url) throw new Error("Сервер не вернул ссылку на готовый фрагмент.");
 
   setMessage("Загружаю готовый фрагмент с сервера...");
+  startExportProgress("Скачиваю фрагмент...");
   const response = await fetch(url);
   if (!response.ok) throw new Error("Не удалось скачать готовый фрагмент.");
   const blob = await response.blob();
@@ -84,6 +86,7 @@ export async function saveClip(event) {
     if (fileHandle === null) return;
 
     setMessage("Готовлю фрагмент...");
+    startExportProgress("Готовлю фрагмент...");
     const clip = await fetchJson("/api/clips", {
       method: "POST",
       body: JSON.stringify({
@@ -98,7 +101,9 @@ export async function saveClip(event) {
       })
     });
     await saveFileToDevice(clip.downloadUrl || clip.href, fileName, fileHandle);
+    finishExportProgress();
   } catch (error) {
+    stopExportProgress();
     setMessage(error.message);
     showToast(error.message || "Не удалось сохранить фрагмент", { type: "error" });
   } finally {

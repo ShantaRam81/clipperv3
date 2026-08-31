@@ -45,3 +45,6 @@ export const commandMessageEl = document.querySelector("#commandMessage");
 export const commandPanelEl = document.querySelector("#introState");
 export const pasteRowEl = document.querySelector(".paste-row");
 export const saveBtn = document.querySelector("#saveBtn");
+export const exportProgressEl = document.querySelector("#exportProgress");
+export const exportProgressBarEl = document.querySelector("#exportProgressBar");
+export const exportProgressLabelEl = document.querySelector("#exportProgressLabel");

@@ -1,10 +1,14 @@
 import {
   startRange, endRange, startInput, endInput, durationInput, rangeLabel, selectedRange,
   timeBubbleEl, previewSelectedRangeEl, rangeTimeLabelsEl, rangeStartLabelEl, rangeEndLabelEl,
-  filmstripEl, previewVideoEl
+  filmstripEl, previewVideoEl, saveBtn
 } from "./dom.js";
 import { state } from "./state.js";
 import { formatTime, formatTimeShort, parseTime, clamp } from "./api.js";
+
+// Matches the server's maxClipSeconds — keep clips exportable in one shot
+// rather than letting the user hit a slow failure after picking a range.
+export const MAX_CLIP_SECONDS = 60;
 
 export function syncRange(source) {
   if (source === "text") {
@@ -25,10 +29,19 @@ export function syncRange(source) {
     }
   }
 
+  const duration = end - start;
   startInput.value = formatTime(start);
   endInput.value = formatTime(end);
-  durationInput.value = `${(end - start).toFixed(1)} сек`;
+  durationInput.value = `${duration.toFixed(1)} сек`;
   rangeLabel.textContent = `${formatTime(start)} - ${formatTime(end)}`;
+
+  const exceedsMax = duration > MAX_CLIP_SECONDS;
+  durationInput.classList.toggle("duration-warning", exceedsMax);
+  if (saveBtn) {
+    saveBtn.disabled = exceedsMax;
+    saveBtn.classList.toggle("duration-exceeded", exceedsMax);
+    saveBtn.title = exceedsMax ? `Фрагмент дольше ${MAX_CLIP_SECONDS} секунд не поддерживается` : "";
+  }
   timeBubbleEl.textContent = formatTime(end);
 
   const left = (start / state.sourceDuration) * 100;

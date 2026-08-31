@@ -851,6 +851,48 @@ input[type="range"]::-moz-range-thumb {
   opacity: 0.68;
 }
 
+#saveBtn.duration-exceeded {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
+.export-progress {
+  display: grid;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.export-progress[hidden] {
+  display: none;
+}
+
+.export-progress-track {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.export-progress-bar {
+  height: 100%;
+  width: 0%;
+  border-radius: inherit;
+  background: #fbff58;
+  transition: width 400ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.export-progress-label {
+  color: rgba(236, 238, 241, 0.5);
+  font-size: 12px;
+  text-align: center;
+}
+
+.duration-warning {
+  color: var(--danger);
+  font-size: 12px;
+  text-align: center;
+}
+
 .library {
   display: grid;
   grid-template-rows: auto auto 1fr;
