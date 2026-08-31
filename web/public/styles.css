@@ -887,10 +887,8 @@ input[type="range"]::-moz-range-thumb {
   text-align: center;
 }
 
-.duration-warning {
+.duration-total.duration-warning {
   color: var(--danger);
-  font-size: 12px;
-  text-align: center;
 }
 
 .library {
